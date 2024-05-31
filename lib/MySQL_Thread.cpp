@@ -499,6 +499,7 @@ static char * mysql_thread_variables_names[]= {
 	(char *)"data_packets_history_size",
 	(char *)"handle_warnings",
 	(char *)"evaluate_replication_lag_on_servers_load",
+	(char *)"ignore_min_gtid_annotations",
 	NULL
 };
 
@@ -1131,6 +1132,7 @@ MySQL_Threads_Handler::MySQL_Threads_Handler() {
 	variables.enable_load_data_local_infile=false;
 	variables.log_mysql_warnings_enabled=false;
 	variables.data_packets_history_size=0;
+	variables.ignore_min_gtid_annotations=false;
 	// status variables
 	status_variables.mirror_sessions_current=0;
 	__global_MySQL_Thread_Variables_version=1;
@@ -1350,6 +1352,7 @@ char * MySQL_Threads_Handler::get_variable_string(char *name) {
 	if (!strcmp(name,"interfaces")) return strdup(variables.interfaces);
 	if (!strcmp(name,"keep_multiplexing_variables")) return strdup(variables.keep_multiplexing_variables);
 	if (!strcmp(name,"default_authentication_plugin")) return strdup(variables.default_authentication_plugin);
+
 	// LCOV_EXCL_START
 	proxy_error("Not existing variable: %s\n", name); assert(0);
 	return NULL;
@@ -1868,7 +1871,6 @@ bool MySQL_Threads_Handler::set_variable(char *name, const char *value) {	// thi
 		}
 	}
 
-
 	if (!strcasecmp(name,"keep_multiplexing_variables")) {
 		if (vallen) {
 			free(variables.keep_multiplexing_variables);
@@ -2127,6 +2129,7 @@ char ** MySQL_Threads_Handler::get_variables_list() {
 		VariablesPointers_bool["stats_time_query_processor"]      = make_tuple(&variables.stats_time_query_processor,      false);
 		VariablesPointers_bool["use_tcp_keepalive"]               = make_tuple(&variables.use_tcp_keepalive,               false);
 		VariablesPointers_bool["verbose_query_error"]             = make_tuple(&variables.verbose_query_error,             false);
+		VariablesPointers_bool["ignore_min_gtid_annotations"]     = make_tuple(&variables.ignore_min_gtid_annotations,     false);
 #ifdef IDLE_THREADS
 		VariablesPointers_bool["session_idle_show_processlist"] = make_tuple(&variables.session_idle_show_processlist, false);
 #endif // IDLE_THREADS
@@ -2251,14 +2254,14 @@ char ** MySQL_Threads_Handler::get_variables_list() {
 		VariablesPointers_int["max_transaction_time"]      = make_tuple(&variables.max_transaction_time,      1000,  20*24*3600*1000, false);
 		VariablesPointers_int["query_cache_size_mb"]       = make_tuple(&variables.query_cache_size_MB,          0,       1024*10240, false);
 		VariablesPointers_int["query_cache_soft_ttl_pct"]  = make_tuple(&variables.query_cache_soft_ttl_pct,     0,              100, false);
-		VariablesPointers_int["query_cache_handle_warnings"] = make_tuple(&variables.query_cache_handle_warnings,	 0,				   1, false);
+		VariablesPointers_int["query_cache_handle_warnings"] = make_tuple(&variables.query_cache_handle_warnings,        0,        1, false);
 
 #ifdef IDLE_THREADS
 		VariablesPointers_int["session_idle_ms"]           = make_tuple(&variables.session_idle_ms,              1,        3600*1000, false);
 #endif // IDLE_THREADS
-		VariablesPointers_int["show_processlist_extended"] = make_tuple(&variables.show_processlist_extended,    0,                2, false);
-		VariablesPointers_int["threshold_query_length"]    = make_tuple(&variables.threshold_query_length,    1024, 1*1024*1024*1024, false);
-		VariablesPointers_int["threshold_resultset_size"]  = make_tuple(&variables.threshold_resultset_size,  1024, 1*1024*1024*1024, false);
+		VariablesPointers_int["show_processlist_extended"] = make_tuple(&variables.show_processlist_extended,    0,                 2, false);
+		VariablesPointers_int["threshold_query_length"]    = make_tuple(&variables.threshold_query_length,    1024,  1*1024*1024*1024, false);
+		VariablesPointers_int["threshold_resultset_size"]  = make_tuple(&variables.threshold_resultset_size,  1024,  1*1024*1024*1024, false);
 
 		// variables with special variable == true
 		// the input validation for these variables MUST be EXPLICIT
@@ -4429,6 +4432,7 @@ void MySQL_Thread::refresh_variables() {
 #ifdef DEBUG
 	REFRESH_VARIABLE_BOOL(session_debug);
 #endif /* DEBUG */
+	REFRESH_VARIABLE_BOOL(ignore_min_gtid_annotations);
 	GloMTH->wrunlock();
 	pthread_mutex_unlock(&GloVars.global.ext_glomth_mutex);
 }

@@ -2588,14 +2588,13 @@ __exit__query_parser_command_type:
 }
 
 bool Query_Processor::query_parser_first_comment(Query_Processor_Output *qpo, char *fc) {
-	bool ret=false;
 	tokenizer_t tok;
 	tokenizer( &tok, fc, ";", TOKENIZER_NO_EMPTIES );
 	const char* token;
 	for ( token = tokenize( &tok ) ; token ;  token = tokenize( &tok ) ) {
 		char *key=NULL;
 		char *value=NULL;
-    c_split_2(token, "=", &key, &value);
+		c_split_2(token, "=", &key, &value);
 		remove_spaces(key);
 		remove_spaces(value);
 		if (strlen(key)) {
@@ -2657,14 +2656,18 @@ bool Query_Processor::query_parser_first_comment(Query_Processor_Output *qpo, ch
 				}
 			}
 			if (!strcasecmp(key,"min_gtid")) {
-				size_t l = strlen(value);
-				if (is_valid_gtid(value, l)) {
-					char *buf=(char*)malloc(l+1);
-					strncpy(buf, value, l);
-					buf[l+1] = '\0';
-					qpo->min_gtid = buf;
+				if (mysql_thread___ignore_min_gtid_annotations) {
+					proxy_warning("Ignorning min_gtid=%s\n", value);
 				} else {
-					proxy_warning("Invalid gtid value=%s\n", value);
+					size_t l = strlen(value);
+					if (is_valid_gtid(value, l)) {
+						char *buf=(char*)malloc(l+1);
+						strncpy(buf, value, l);
+						buf[l+1] = '\0';
+						qpo->min_gtid = buf;
+					} else {
+						proxy_warning("Invalid gtid value=%s\n", value);
+					}
 				}
 			}
 			if (!strcasecmp(key, "create_new_connection")) {
@@ -2680,7 +2683,7 @@ bool Query_Processor::query_parser_first_comment(Query_Processor_Output *qpo, ch
 		free(value);
 	}
 	free_tokenizer( &tok );
-	return ret;
+	return false;
 }
 
 bool Query_Processor::is_valid_gtid(char *gtid, size_t gtid_len) {

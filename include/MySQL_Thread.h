@@ -563,6 +563,7 @@ class MySQL_Threads_Handler
 		int data_packets_history_size;
 		int handle_warnings;
 		int evaluate_replication_lag_on_servers_load;
+		bool ignore_min_gtid_annotations;
 	} variables;
 	struct {
 		unsigned int mirror_sessions_current;
