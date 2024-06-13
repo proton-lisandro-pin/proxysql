@@ -2657,7 +2657,7 @@ bool Query_Processor::query_parser_first_comment(Query_Processor_Output *qpo, ch
 			}
 			if (!strcasecmp(key,"min_gtid")) {
 				if (mysql_thread___ignore_min_gtid_annotations) {
-					proxy_warning("Ignorning min_gtid=%s\n", value);
+					proxy_warning("Ignoring min_gtid=%s\n", value);
 				} else {
 					size_t l = strlen(value);
 					if (is_valid_gtid(value, l)) {
