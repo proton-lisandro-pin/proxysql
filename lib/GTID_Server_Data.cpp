@@ -212,21 +212,7 @@ bool GTID_Server_Data::readall() {
 
 
 bool GTID_Server_Data::gtid_exists(char *gtid_uuid, uint64_t gtid_trxid) {
-	std::string s = gtid_uuid;
-	auto it = gtid_executed.find(s);
-//	fprintf(stderr,"Checking if server %s:%d has GTID %s:%lu ... ", address, port, gtid_uuid, gtid_trxid);
-	if (it == gtid_executed.end()) {
-//		fprintf(stderr,"NO\n");
-		return false;
-	}
-	for (auto itr = it->second.begin(); itr != it->second.end(); ++itr) {
-		if (itr->contains((int64_t)gtid_trxid)) {
-//			fprintf(stderr,"YES\n");
-			return true;
-		}
-	}
-//	fprintf(stderr,"NO\n");
-	return false;
+	return gtid_executed.has_gtid((std::string)gtid_uuid, (gtid_t)gtid_trxid);
 }
 
 void GTID_Server_Data::read_all_gtids() {
@@ -318,8 +304,7 @@ bool GTID_Server_Data::read_next_gtid() {
 					uint64_t trx_to;
 					sscanf(subtoken,"%lu-%lu",&trx_from,&trx_to);
 					//fprintf(stdout,"BS from %s:%lu-%lu\n", uuid_server, trx_from, trx_to);
-					std::string s = uuid_server;
-					gtid_executed[s].emplace_back(trx_from, trx_to);
+					gtid_executed.add((std::string)uuid_server, (gtid_t)trx_from, (gtid_t)trx_to);
 			   }
 			}
 		}
@@ -354,77 +339,13 @@ bool GTID_Server_Data::read_next_gtid() {
 					break;
 			}
 			//fprintf(stdout,"%s:%lu\n", uuid_server, rec_trxid);
-			std::string s = uuid_server;
-			gtid_t new_gtid = std::make_pair(s,rec_trxid);
-			addGtid(new_gtid,gtid_executed);
+			gtid_executed.add((std::string)uuid_server, (gtid_t)rec_trxid);
 			events_read++;
 			//return true;
 		}
 	}
 	//std::cout << "current pos " << gtid_executed_to_string(gtid_executed) << std::endl << std::endl;
 	return true;
-}
-
-std::string gtid_executed_to_string(gtid_set_t& gtid_executed) {
-	std::string gtid_set;
-	for (auto it=gtid_executed.begin(); it!=gtid_executed.end(); ++it) {
-		std::string s = it->first;
-		s.insert(8,"-");
-		s.insert(13,"-");
-		s.insert(18,"-");
-		s.insert(23,"-");
-		s = s + ":";
-		for (auto itr = it->second.begin(); itr != it->second.end(); ++itr) {
-			gtid_set += s + itr->to_string() + ",";
-		}
-	}
-	// Extract latest comma only in case 'gtid_executed' isn't empty
-	if (gtid_set.empty() == false) {
-		gtid_set.pop_back();
-	}
-	return gtid_set;
-}
-
-
-// Merges a GTID interval into a gitd_executed instance.
-void addGtid(const std::string& uuid, const gtid_interval_t &iv, gtid_set_t& gtid_executed) {
-	auto it = gtid_executed.find(uuid);
-	if (it == gtid_executed.end()) {
-		// new UUID entry
-		gtid_executed[uuid].emplace_back(iv);
-		return;
-	}
-
-	// insert/merge GTID interval
-	auto pos = it->second.begin();
-	for (; pos != it->second.end(); ++pos) {
-		if (pos->merge(iv))
-			break;
-	}
-	if (pos == it->second.end()) {
-		it->second.emplace_back(iv);
-	}
-
-	// merge overlapping GTID ranges, if any
-	it->second.sort();
-	auto a = it->second.begin();
-	while (a != it->second.end()) {
-		auto b = std::next(a);
-		if (b == it->second.end()) {
-			break;
-		}
-		if (a->merge(*b)) {
-				it->second.erase(b);
-				continue;
-		}
-		a++;
-	}
-}
-
-// Merges a single GTID into a gitd_executed instance.
-inline void addGtid(const gtid_t& gtid, gtid_set_t& gtid_executed) {
-	gtid_interval_t iv = Gtid_Interval(gtid.second, gtid.second);
-	addGtid(gtid.first, iv, gtid_executed);
 }
 
 void * GTID_syncer_run() {
