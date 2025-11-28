@@ -253,6 +253,13 @@ bool GTID_Server_Data::writeout() {
 	return ret;
 }
 
+/*
+ * The wire format for the binlogreader is three distinct messages, in plaintext:
+ *
+ * ST=<uuid>:<gtid>[-<gtid>][,<uuid>:<gtid>[-<gtid>], ...] : Bootstrap message, providing individual GTID or GTID ranges for all seen UUID servers.
+ * I1=<uuid>:<gtid>[-<gtid>]                               : Latest seen GTID/GTID ranges for a given UUID.
+ * I2=<gtid>[-<gtid>]                                      : Latest seen GTID/GTID ranges.
+ */
 bool GTID_Server_Data::read_next_gtid() {
 	if (len==0) {
 		return false;
@@ -300,11 +307,7 @@ bool GTID_Server_Data::read_next_gtid() {
 					}
 					//fprintf(stdout,"BS from %s\n", uuid_server);
 				} else { // we are reading the trxids
-					uint64_t trx_from;
-					uint64_t trx_to;
-					sscanf(subtoken,"%lu-%lu",&trx_from,&trx_to);
-					//fprintf(stdout,"BS from %s:%lu-%lu\n", uuid_server, trx_from, trx_to);
-					gtid_executed.add((std::string)uuid_server, (gtid_t)trx_from, (gtid_t)trx_to);
+					gtid_executed.add((std::string)uuid_server, subtoken);
 			   }
 			}
 		}
@@ -319,7 +322,6 @@ bool GTID_Server_Data::read_next_gtid() {
 		//fprintf(stdout,"%s\n", rec_msg);
 		if (rec_msg[0]=='I') {
 			//char rec_uuid[80];
-			uint64_t rec_trxid = 0;
 			char *a = NULL;
 			int ul = 0;
 			switch (rec_msg[1]) {
@@ -329,17 +331,14 @@ bool GTID_Server_Data::read_next_gtid() {
 					ul = a-rec_msg-3;
 					strncpy(uuid_server,rec_msg+3,ul);
 					uuid_server[ul] = 0;
-					rec_trxid=atoll(a+1);
+					gtid_executed.add((std::string)uuid_server, a+1);
 					break;
 				case '2':
-					//sscanf(rec_msg+3,"%lu",&rec_trxid);
-					rec_trxid=atoll(rec_msg+3);
+					gtid_executed.add((std::string)uuid_server, rec_msg+3);
 					break;
 				default:
 					break;
 			}
-			//fprintf(stdout,"%s:%lu\n", uuid_server, rec_trxid);
-			gtid_executed.add((std::string)uuid_server, (gtid_t)rec_trxid);
 			events_read++;
 			//return true;
 		}

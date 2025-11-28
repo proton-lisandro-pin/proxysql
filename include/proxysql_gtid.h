@@ -57,6 +57,7 @@ class Gtid_Set {
 		void add(const std::string& uuid, const gtid_interval_t& iv);
 		void add(const std::string& uuid, const gtid_t& gtid);
 		void add(const std::string& uuid, const gtid_t& start, const gtid_t& end);
+		void add(const std::string& uuid, const char* str);
 
 		const bool has_gtid(const std::string uuid, const gtid_t gtid);
 		const std::string to_string(void);

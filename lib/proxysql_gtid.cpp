@@ -160,6 +160,11 @@ void Gtid_Set::add(const std::string& uuid, const gtid_t& start, const gtid_t& e
     add(uuid, gtid_interval_t(start, end));
 }
 
+// Adds a new GTID range for a given UUID, as a C string buffer.
+void Gtid_Set::add(const std::string& uuid, const char *str) {
+    add(uuid, gtid_interval_t(str));
+}
+
 // Evaluates whether a GTID is present in any of the intervals for a given UUID.
 const bool Gtid_Set::has_gtid(const std::string uuid, const gtid_t gtid) {
 	auto it = map.find(uuid);
